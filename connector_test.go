@@ -137,7 +137,7 @@ func TestPullPolicies(t *testing.T) {
 
 func RunStep(t *testing.T, connector deployer.Connector, moduleName string) {
 	stepID := "hello-world"
-	input := map[string]any{"name": "Test McTesty"}
+	input := map[string]any{"name": "Tester McTesty"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -166,5 +166,5 @@ func RunStep(t *testing.T, connector deployer.Connector, moduleName string) {
 	assert.NotNil(t, pluginSchema)
 	assert.Equals(t,
 		outputData.(map[interface{}]interface{}),
-		map[interface{}]interface{}{"message": "Hello, Test McTesty!"})
+		map[interface{}]interface{}{"message": "Hello, Tester McTesty!"})
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func pythonGetDefaultPath() string {
-	path, err := exec.LookPath("python3.9")
+	path, err := exec.LookPath("python")
 	if err != nil {
 		panic("python binary not found in $PATH, please provide it in configuration")
 	}
