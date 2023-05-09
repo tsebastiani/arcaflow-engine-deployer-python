@@ -64,7 +64,7 @@ func parseModuleName(fullName string, moduleSource python.ModuleSource) (*models
 	}
 	if matchGit && moduleSource == python.ModuleSourcePypi {
 		return nil, errors.New("you're using a git module name " +
-			"format using the deployer in pip mode, " +
+			"format using the deployer in pipy mode, " +
 			"please change the deployer configuration")
 	}
 	if !matchGit && !matchPypi {

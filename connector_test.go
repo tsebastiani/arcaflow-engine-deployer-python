@@ -40,8 +40,8 @@ func getConnector(t *testing.T, configJSON string) (deployer.Connector, *config.
 
 func createTestVenv(t *testing.T, moduleName string) error {
 	// venv is artificially created, unfortunately until
-	// there is not a module in pip this is the only way to test
-	// Pip ModuleSource.
+	// there is not a module in pypi this is the only way to test
+	// Pypi ModuleSource.
 	// Pull mode Always cannot be tested otherwise the venv
 	// would be overwritten and the module pull from pypi would fail
 	python := getCliWrapper(t, config.ModuleSourcePypi)

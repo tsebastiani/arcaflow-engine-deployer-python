@@ -65,7 +65,7 @@ func TestImageFormatValidation(t *testing.T) {
 		"please change the deployer configuration"
 
 	pypiMismatchMessage := "you're using a git module name " +
-		"format using the deployer in pip mode, " +
+		"format using the deployer in pipy mode, " +
 		"please change the deployer configuration"
 
 	workDir := "/tmp"
