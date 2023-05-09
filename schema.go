@@ -1,14 +1,11 @@
 package pythondeployer
 
 import (
-	"go.flow.arcalot.io/pythondeployer/internal/config"
-	"os/exec"
-
-	"go.flow.arcalot.io/pythondeployer/internal/util"
-
-	"regexp"
-
 	"go.flow.arcalot.io/pluginsdk/schema"
+	"go.flow.arcalot.io/pythondeployer/internal/config"
+	"go.flow.arcalot.io/pythondeployer/internal/util"
+	"os/exec"
+	"regexp"
 )
 
 func pythonGetDefaultPath() string {

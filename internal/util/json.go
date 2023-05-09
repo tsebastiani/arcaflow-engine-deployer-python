@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/json"
-
 	"go.arcalot.io/lang"
 )
 

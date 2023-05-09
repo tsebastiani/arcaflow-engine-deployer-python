@@ -105,7 +105,8 @@ func TestRunStepGit(t *testing.T) {
 
 func TestRunStepPypi(t *testing.T) {
 	moduleName := "arcaflow-plugin-template-python"
-	createTestVenv(t, moduleName)
+	err := createTestVenv(t, moduleName)
+	assert.NoError(t, err)
 	connector, _ := getConnector(t, inOutConfigPypi)
 	RunStep(t, connector, moduleName)
 }

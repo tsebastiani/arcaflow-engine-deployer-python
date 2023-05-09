@@ -7,7 +7,7 @@ import (
 type CliWrapper interface {
 	ModuleExists(fullModuleName string) (*bool, error)
 	PullModule(fullModuleName string) error
-	Deploy(image string) (io.WriteCloser, io.ReadCloser, error)
-	KillAndClean(moduleName string) error
+	Deploy(fullModuleName string) (io.WriteCloser, io.ReadCloser, error)
+	KillAndClean() error
 	GetModulePath(fullModuleName string) (*string, error)
 }

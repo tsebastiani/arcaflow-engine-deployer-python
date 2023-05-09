@@ -4,26 +4,25 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	python "go.flow.arcalot.io/pythondeployer/internal/config"
+	"go.arcalot.io/log"
+	"go.flow.arcalot.io/pythondeployer/internal/config"
 	"go.flow.arcalot.io/pythondeployer/internal/models"
 	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
-
-	"go.arcalot.io/log"
 )
 
 type cliWrapper struct {
 	pythonFullPath string
 	workDir        string
-	moduleSource   python.ModuleSource
+	moduleSource   config.ModuleSource
 	deployCommand  *exec.Cmd
 	logger         log.Logger
 }
 
-func NewCliWrapper(pythonFullPath string, workDir string, moduleSource python.ModuleSource, logger log.Logger) CliWrapper {
+func NewCliWrapper(pythonFullPath string, workDir string, moduleSource config.ModuleSource, logger log.Logger) CliWrapper {
 	return &cliWrapper{
 		pythonFullPath: pythonFullPath,
 		logger:         logger,
@@ -32,8 +31,8 @@ func NewCliWrapper(pythonFullPath string, workDir string, moduleSource python.Mo
 	}
 }
 
-func parseModuleNameGit(fullName string, module *models.PythonModule) {
-	nameSourceVersion := strings.Split(fullName, "@")
+func parseModuleNameGit(fullModuleName string, module *models.PythonModule) {
+	nameSourceVersion := strings.Split(fullModuleName, "@")
 	source := strings.Replace(nameSourceVersion[1], "git+", "", 1)
 	(*module).ModuleName = &nameSourceVersion[0]
 	(*module).Repo = &source
@@ -42,27 +41,27 @@ func parseModuleNameGit(fullName string, module *models.PythonModule) {
 	}
 }
 
-func parseModuleNamePip(fullName string, module *models.PythonModule) {
-	nameAndVersion := strings.Split(fullName, "@")
+func parseModuleNamePip(fullModuleName string, module *models.PythonModule) {
+	nameAndVersion := strings.Split(fullModuleName, "@")
 	(*module).ModuleName = &nameAndVersion[0]
 	if len(nameAndVersion) == 2 {
 		(*module).ModuleVersion = &nameAndVersion[1]
 	}
 }
 
-func parseModuleName(fullName string, moduleSource python.ModuleSource) (*models.PythonModule, error) {
-	pythonModule := models.NewPythonModule(moduleSource, fullName)
+func parseModuleName(fullModuleName string, moduleSource config.ModuleSource) (*models.PythonModule, error) {
+	pythonModule := models.NewPythonModule(moduleSource, fullModuleName)
 	pypiRegex := "^([a-zA-Z0-9]+[_,-]*)+$|^([a-zA-Z0-9]+[_,-]*)+@[a-zA-Z0-9\\.]+$"
 	gitRegex := "^([a-zA-Z0-9]+[-_]*)+@git\\+http[s]{0,1}:\\/\\/([a-zA-Z0-9]+[-.\\/]*)+(@[a-z0-9]+)*$"
-	matchPypi, _ := regexp.MatchString(pypiRegex, fullName)
-	matchGit, _ := regexp.MatchString(gitRegex, fullName)
+	matchPypi, _ := regexp.MatchString(pypiRegex, fullModuleName)
+	matchGit, _ := regexp.MatchString(gitRegex, fullModuleName)
 
-	if matchPypi && moduleSource == python.ModuleSourceGit {
+	if matchPypi && moduleSource == config.ModuleSourceGit {
 		return nil, errors.New("you're using a pip module name " +
 			"format using the deployer in git mode, " +
 			"please change the deployer configuration")
 	}
-	if matchGit && moduleSource == python.ModuleSourcePypi {
+	if matchGit && moduleSource == config.ModuleSourcePypi {
 		return nil, errors.New("you're using a git module name " +
 			"format using the deployer in pipy mode, " +
 			"please change the deployer configuration")
@@ -72,9 +71,9 @@ func parseModuleName(fullName string, moduleSource python.ModuleSource) (*models
 	}
 
 	if matchGit {
-		parseModuleNameGit(fullName, &pythonModule)
+		parseModuleNameGit(fullModuleName, &pythonModule)
 	} else {
-		parseModuleNamePip(fullName, &pythonModule)
+		parseModuleNamePip(fullModuleName, &pythonModule)
 	}
 
 	return &pythonModule, nil
@@ -148,8 +147,8 @@ func (p *cliWrapper) PullModule(fullModuleName string) error {
 	return nil
 }
 
-func (p *cliWrapper) Deploy(image string) (io.WriteCloser, io.ReadCloser, error) {
-	pythonModule, err := parseModuleName(image, p.moduleSource)
+func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadCloser, error) {
+	pythonModule, err := parseModuleName(fullModuleName, p.moduleSource)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,7 +156,7 @@ func (p *cliWrapper) Deploy(image string) (io.WriteCloser, io.ReadCloser, error)
 	moduleInvokableName := strings.ReplaceAll(*pythonModule.ModuleName, "-", "_")
 	args = append(args, moduleInvokableName)
 	args = append(args, "--atp")
-	venvPath, err := p.GetModulePath(image)
+	venvPath, err := p.GetModulePath(fullModuleName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -180,8 +179,8 @@ func (p *cliWrapper) Deploy(image string) (io.WriteCloser, io.ReadCloser, error)
 	return stdin, stdout, nil
 }
 
-func (p *cliWrapper) KillAndClean(containerName string) error {
-	p.logger.Infof("killing python process with pid %d", p.deployCommand.Process.Pid)
+func (p *cliWrapper) KillAndClean() error {
+	p.logger.Infof("killing config process with pid %d", p.deployCommand.Process.Pid)
 	err := p.deployCommand.Process.Kill()
 	if err != nil {
 		return err

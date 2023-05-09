@@ -32,7 +32,8 @@ func TestPullImage(t *testing.T) {
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
 	python := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger)
-	pullModule(python, module, workDir, t)
+	err := pullModule(python, module, workDir, t)
+	assert.NoError(t, err)
 }
 
 func TestImageExists(t *testing.T) {
@@ -45,9 +46,10 @@ func TestImageExists(t *testing.T) {
 	exists, err := python.ModuleExists(module)
 	assert.Nil(t, err)
 	assert.Equals(t, *exists, false)
-	pullModule(python, module, workDir, t)
+	err = pullModule(python, module, workDir, t)
+	assert.NoError(t, err)
 	exists, err = python.ModuleExists(module)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equals(t, *exists, true)
 }
 
@@ -94,28 +96,28 @@ func TestImageFormatValidation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equals(t, *path, fmt.Sprintf("%s/arcaflow-plugin-template-python_latest", workDir))
 
-	path, err = wrapperGit.GetModulePath(moduleWrongFormat)
+	_, err = wrapperGit.GetModulePath(moduleWrongFormat)
 	assert.Error(t, err)
-	path, err = wrapperPypi.GetModulePath(moduleWrongFormat)
+	_, err = wrapperPypi.GetModulePath(moduleWrongFormat)
 	assert.Error(t, err)
 	assert.Equals(t, err.Error(), wrongFormatMessage)
 
 	// Pypi source with git module name
-	path, err = wrapperPypi.GetModulePath(moduleGitCommit)
+	_, err = wrapperPypi.GetModulePath(moduleGitCommit)
 	assert.Error(t, err)
 	assert.Equals(t, err.Error(), pypiMismatchMessage)
 
-	path, err = wrapperPypi.GetModulePath(moduleGitNoCommit)
+	_, err = wrapperPypi.GetModulePath(moduleGitNoCommit)
 	assert.Error(t, err)
 	assert.Equals(t, err.Error(), pypiMismatchMessage)
 
 	// Git source with pypi module name
 
-	path, err = wrapperGit.GetModulePath(modulePypiNoVersion)
+	_, err = wrapperGit.GetModulePath(modulePypiNoVersion)
 	assert.Error(t, err)
 	assert.Equals(t, err.Error(), gitMismatchMessage)
 
-	path, err = wrapperGit.GetModulePath(modulePypiVersion)
+	_, err = wrapperGit.GetModulePath(modulePypiVersion)
 	assert.Error(t, err)
 	assert.Equals(t, err.Error(), gitMismatchMessage)
 

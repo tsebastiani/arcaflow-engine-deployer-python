@@ -1,18 +1,17 @@
 package pythondeployer
 
 import (
-	config2 "go.flow.arcalot.io/pythondeployer/internal/config"
-	"io"
-
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/pythondeployer/internal/cliwrapper"
+	"go.flow.arcalot.io/pythondeployer/internal/config"
+	"io"
 )
 
 type CliPlugin struct {
 	wrapper        cliwrapper.CliWrapper
 	containerImage string
 	containerName  string
-	config         *config2.Config
+	config         *config.Config
 	logger         log.Logger
 	stdin          io.WriteCloser
 	stdout         io.ReadCloser
@@ -29,7 +28,7 @@ func (p *CliPlugin) Read(b []byte) (n int, err error) {
 }
 
 func (p *CliPlugin) Close() error {
-	if err := p.wrapper.KillAndClean(p.containerName); err != nil {
+	if err := p.wrapper.KillAndClean(); err != nil {
 		return err
 	}
 
