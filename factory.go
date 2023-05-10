@@ -17,7 +17,7 @@ type factory struct {
 }
 
 func (f factory) ID() string {
-	return "docker"
+	return "python"
 }
 
 func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*config.Config] {
