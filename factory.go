@@ -1,11 +1,11 @@
 package pythondeployer
 
 import (
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/cliwrapper"
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"go.arcalot.io/log"
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/schema"
-	"go.flow.arcalot.io/pythondeployer/internal/cliwrapper"
-	"go.flow.arcalot.io/pythondeployer/internal/config"
 )
 
 // NewFactory creates a new factory for the Docker deployer.

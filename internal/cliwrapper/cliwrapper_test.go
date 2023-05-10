@@ -2,9 +2,9 @@ package cliwrapper
 
 import (
 	"fmt"
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"go.arcalot.io/assert"
 	"go.arcalot.io/log"
-	"go.flow.arcalot.io/pythondeployer/internal/config"
 	"os"
 	"testing"
 )

@@ -1,4 +1,4 @@
-module go.flow.arcalot.io/pythondeployer
+module github.com/tsebastiani/arcaflow-engine-deployer-python
 
 go 1.18
 

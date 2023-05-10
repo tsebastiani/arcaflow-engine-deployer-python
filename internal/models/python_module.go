@@ -3,7 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
-	"go.flow.arcalot.io/pythondeployer/internal/config"
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 )
 
 type PythonModule struct {

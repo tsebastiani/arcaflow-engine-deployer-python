@@ -1,9 +1,9 @@
 package pythondeployer
 
 import (
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
+	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/util"
 	"go.flow.arcalot.io/pluginsdk/schema"
-	"go.flow.arcalot.io/pythondeployer/internal/config"
-	"go.flow.arcalot.io/pythondeployer/internal/util"
 	"os/exec"
 	"regexp"
 )
