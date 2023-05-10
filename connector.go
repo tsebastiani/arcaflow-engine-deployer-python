@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/cliwrapper"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
-	"go.arcalot.io/log"
+	"go.arcalot.io/log/v2"
 	"go.flow.arcalot.io/deployer"
 	"os"
 )

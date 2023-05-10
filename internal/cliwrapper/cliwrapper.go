@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/models"
-	"go.arcalot.io/log"
+	"go.arcalot.io/log/v2"
 	"io"
 	"os"
 	"os/exec"
