@@ -25,7 +25,7 @@ func (f factory) ConfigurationSchema() *schema.TypedScopeSchema[*config.Config] 
 }
 
 func (f factory) Create(config *config.Config, logger log.Logger) (deployer.Connector, error) {
-	python := cliwrapper.NewCliWrapper(config.PythonPath, config.WorkDir, config.ModuleSource, logger)
+	python := cliwrapper.NewCliWrapper(config.PythonPath, config.WorkDir, config.ModuleSource, logger, config.OverrideModuleCompatibility)
 	return &Connector{
 		config:           config,
 		logger:           logger,

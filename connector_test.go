@@ -17,11 +17,11 @@ import (
 	"testing"
 )
 
-func getCliWrapper(t *testing.T, source config.ModuleSource) cliwrapper.CliWrapper {
+func getCliWrapper(t *testing.T, source config.ModuleSource, overrideCompatibilityCheck bool) cliwrapper.CliWrapper {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
-	return cliwrapper.NewCliWrapper(pythonPath, workDir, source, logger)
+	return cliwrapper.NewCliWrapper(pythonPath, workDir, source, logger, overrideCompatibilityCheck)
 }
 
 func getConnector(t *testing.T, configJSON string) (deployer.Connector, *config.Config) {
@@ -44,7 +44,7 @@ func createTestVenv(t *testing.T, moduleName string) error {
 	// Pypi ModuleSource.
 	// Pull mode Always cannot be tested otherwise the venv
 	// would be overwritten and the module pull from pypi would fail
-	python := getCliWrapper(t, config.ModuleSourcePypi)
+	python := getCliWrapper(t, config.ModuleSourcePypi, false)
 	modulePath, err := python.GetModulePath(moduleName)
 	assert.NoError(t, err)
 	exists, err := python.ModuleExists(moduleName)
@@ -62,7 +62,7 @@ func createTestVenv(t *testing.T, moduleName string) error {
 	err = cmdCreateVenv.Run()
 	assert.NoError(t, err)
 	pipPath := fmt.Sprintf("%s/venv/bin/pip", *modulePath)
-	cmdPip := exec.Command(pipPath, "install", "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git")
+	cmdPip := exec.Command(pipPath, "install", "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git@cff677e16693b068dcb0c42817ed7180bc4a5f5a")
 	var cmdPipOut bytes.Buffer
 	cmdPip.Stderr = &cmdPipOut
 	if err := cmdPip.Run(); err != nil {
@@ -98,7 +98,7 @@ var inOutConfigPypi = `
 `
 
 func TestRunStepGit(t *testing.T) {
-	moduleName := "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git"
+	moduleName := "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git@faeffde803696d85756d05afd74dd5bd8c9519e5"
 	connector, _ := getConnector(t, inOutConfigGitPullAlways)
 	RunStep(t, connector, moduleName)
 }
@@ -119,7 +119,7 @@ func TestPullPolicies(t *testing.T) {
 	RunStep(t, connectorAlways, moduleName)
 	// pull mode IfNotPresent, venv will be kept
 	RunStep(t, connectorIfNotPresent, moduleName)
-	wrapper := getCliWrapper(t, config.ModuleSourceGit)
+	wrapper := getCliWrapper(t, config.ModuleSourceGit, false)
 	path, err := wrapper.GetModulePath(moduleName)
 	assert.NoError(t, err)
 	file, err := os.Stat(*path)

@@ -15,19 +15,28 @@ import (
 )
 
 type cliWrapper struct {
-	pythonFullPath string
-	workDir        string
-	moduleSource   config.ModuleSource
-	deployCommand  *exec.Cmd
-	logger         log.Logger
+	pythonFullPath             string
+	workDir                    string
+	moduleSource               config.ModuleSource
+	overrideCompatibilityCheck bool
+	deployCommand              *exec.Cmd
+	logger                     log.Logger
 }
 
-func NewCliWrapper(pythonFullPath string, workDir string, moduleSource config.ModuleSource, logger log.Logger) CliWrapper {
+const NoCompatKeyword string = "python-deployer-norun"
+
+func NewCliWrapper(pythonFullPath string,
+	workDir string,
+	moduleSource config.ModuleSource,
+	logger log.Logger,
+	overrideCompatibilityCheck bool,
+) CliWrapper {
 	return &cliWrapper{
-		pythonFullPath: pythonFullPath,
-		logger:         logger,
-		workDir:        workDir,
-		moduleSource:   moduleSource,
+		pythonFullPath:             pythonFullPath,
+		logger:                     logger,
+		workDir:                    workDir,
+		moduleSource:               moduleSource,
+		overrideCompatibilityCheck: overrideCompatibilityCheck,
 	}
 }
 
@@ -161,6 +170,11 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 		return nil, nil, err
 	}
 	venvPython := fmt.Sprintf("%s/venv/bin/python", *venvPath)
+
+	if err := p.checkModuleCompatibility(venvPython, moduleInvokableName); err != nil {
+		return nil, nil, err
+	}
+
 	p.deployCommand = exec.Command(venvPython, args...) //nolint:gosec
 	var stdErrBuff bytes.Buffer
 	p.deployCommand.Stderr = &stdErrBuff
@@ -174,9 +188,31 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 	}
 
 	if err := p.deployCommand.Start(); err != nil {
-		return nil, nil, errors.New(stdErrBuff.String())
+		return nil, nil, fmt.Errorf(stdErrBuff.String())
 	}
 	return stdin, stdout, nil
+}
+
+func (p *cliWrapper) checkModuleCompatibility(venvPython string, moduleName string) error {
+
+	args := []string{"-m", "pip", "show", "--verbose", moduleName}
+	var stOutBuff bytes.Buffer
+	var stdErrBuff bytes.Buffer
+	command := exec.Command(venvPython, args...)
+	command.Stdout = &stOutBuff
+	command.Stderr = &stdErrBuff
+	if err := command.Start(); err != nil {
+		return errors.New(stdErrBuff.String())
+	}
+	if strings.Contains(stOutBuff.String(), NoCompatKeyword) {
+		if p.overrideCompatibilityCheck {
+			p.logger.Warningf("you're running an incompatible module overriding the engine security checks, " +
+				"this action may lead to unexpected behaviours or engine failure")
+		} else {
+			return fmt.Errorf("impossible to run module %s, marked as incompatible in package metadata", moduleName)
+		}
+	}
+	return nil
 }
 
 func (p *cliWrapper) KillAndClean() error {

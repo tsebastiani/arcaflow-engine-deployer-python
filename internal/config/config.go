@@ -1,10 +1,11 @@
 package config
 
 type Config struct {
-	PythonPath       string           `json:"pythonPath"`
-	WorkDir          string           `json:"workdir"`
-	ModulePullPolicy ModulePullPolicy `json:"modulePullPolicy"`
-	ModuleSource     ModuleSource     `json:"moduleSource"`
+	PythonPath                  string           `json:"pythonPath"`
+	WorkDir                     string           `json:"workdir"`
+	ModulePullPolicy            ModulePullPolicy `json:"modulePullPolicy"`
+	ModuleSource                ModuleSource     `json:"moduleSource"`
+	OverrideModuleCompatibility bool             `json:"overrideModuleCompatibility"`
 }
 
 type ModulePullPolicy string

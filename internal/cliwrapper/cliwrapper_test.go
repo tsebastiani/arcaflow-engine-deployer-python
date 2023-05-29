@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"go.arcalot.io/assert"
-	"go.arcalot.io/log"
+	"go.arcalot.io/log/v2"
 	"os"
 	"testing"
 )
@@ -31,7 +31,7 @@ func TestPullImage(t *testing.T) {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
-	python := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger)
+	python := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger, false)
 	err := pullModule(python, module, workDir, t)
 	assert.NoError(t, err)
 }
@@ -41,7 +41,7 @@ func TestImageExists(t *testing.T) {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
-	python := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger)
+	python := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger, false)
 	removeModuleIfExists(module, python, t)
 	exists, err := python.ModuleExists(module)
 	assert.Nil(t, err)
@@ -73,8 +73,8 @@ func TestImageFormatValidation(t *testing.T) {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
-	wrapperPypi := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger)
-	wrapperGit := NewCliWrapper(pythonPath, workDir, config.ModuleSourceGit, logger)
+	wrapperPypi := NewCliWrapper(pythonPath, workDir, config.ModuleSourcePypi, logger, false)
+	wrapperGit := NewCliWrapper(pythonPath, workDir, config.ModuleSourceGit, logger, false)
 
 	// happy path
 	path, err := wrapperPypi.GetModulePath(modulePypiVersion)
