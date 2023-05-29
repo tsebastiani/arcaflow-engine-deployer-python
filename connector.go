@@ -40,7 +40,6 @@ func (c *Connector) Deploy(ctx context.Context, image string) (deployer.Plugin, 
 
 func (c *Connector) pullModule(_ context.Context, fullModuleName string) error {
 	c.logger.Debugf("pull policy: %s", c.config.ModulePullPolicy)
-	c.logger.Debugf("Module Source: %s", c.config.ModuleSource)
 	imageExists, err := c.pythonCliWrapper.ModuleExists(fullModuleName)
 	if err != nil {
 		return err

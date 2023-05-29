@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/models"
 	"go.arcalot.io/log/v2"
 	"io"
@@ -17,7 +16,6 @@ import (
 type cliWrapper struct {
 	pythonFullPath             string
 	workDir                    string
-	moduleSource               config.ModuleSource
 	overrideCompatibilityCheck bool
 	deployCommand              *exec.Cmd
 	logger                     log.Logger
@@ -27,7 +25,6 @@ const NoCompatKeyword string = "python-deployer-norun"
 
 func NewCliWrapper(pythonFullPath string,
 	workDir string,
-	moduleSource config.ModuleSource,
 	logger log.Logger,
 	overrideCompatibilityCheck bool,
 ) CliWrapper {
@@ -35,7 +32,6 @@ func NewCliWrapper(pythonFullPath string,
 		pythonFullPath:             pythonFullPath,
 		logger:                     logger,
 		workDir:                    workDir,
-		moduleSource:               moduleSource,
 		overrideCompatibilityCheck: overrideCompatibilityCheck,
 	}
 }
@@ -50,46 +46,19 @@ func parseModuleNameGit(fullModuleName string, module *models.PythonModule) {
 	}
 }
 
-func parseModuleNamePip(fullModuleName string, module *models.PythonModule) {
-	nameAndVersion := strings.Split(fullModuleName, "@")
-	(*module).ModuleName = &nameAndVersion[0]
-	if len(nameAndVersion) == 2 {
-		(*module).ModuleVersion = &nameAndVersion[1]
-	}
-}
-
-func parseModuleName(fullModuleName string, moduleSource config.ModuleSource) (*models.PythonModule, error) {
-	pythonModule := models.NewPythonModule(moduleSource, fullModuleName)
-	pypiRegex := "^([a-zA-Z0-9]+[_,-]*)+$|^([a-zA-Z0-9]+[_,-]*)+@[a-zA-Z0-9\\.]+$"
+func parseModuleName(fullModuleName string) (*models.PythonModule, error) {
+	pythonModule := models.NewPythonModule(fullModuleName)
 	gitRegex := "^([a-zA-Z0-9]+[-_]*)+@git\\+http[s]{0,1}:\\/\\/([a-zA-Z0-9]+[-.\\/]*)+(@[a-z0-9]+)*$"
-	matchPypi, _ := regexp.MatchString(pypiRegex, fullModuleName)
 	matchGit, _ := regexp.MatchString(gitRegex, fullModuleName)
-
-	if matchPypi && moduleSource == config.ModuleSourceGit {
-		return nil, errors.New("you're using a pip module name " +
-			"format using the deployer in git mode, " +
-			"please change the deployer configuration")
+	if !matchGit {
+		return nil, errors.New("wrong module name format, please use <module-name>@git+<repo_url>[@<commit_sha>]")
 	}
-	if matchGit && moduleSource == config.ModuleSourcePypi {
-		return nil, errors.New("you're using a git module name " +
-			"format using the deployer in pipy mode, " +
-			"please change the deployer configuration")
-	}
-	if !matchGit && !matchPypi {
-		return nil, errors.New("wrong module name format")
-	}
-
-	if matchGit {
-		parseModuleNameGit(fullModuleName, &pythonModule)
-	} else {
-		parseModuleNamePip(fullModuleName, &pythonModule)
-	}
-
+	parseModuleNameGit(fullModuleName, &pythonModule)
 	return &pythonModule, nil
 }
 
 func (p *cliWrapper) GetModulePath(fullModuleName string) (*string, error) {
-	pythonModule, err := parseModuleName(fullModuleName, p.moduleSource)
+	pythonModule, err := parseModuleName(fullModuleName)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +87,7 @@ func (p *cliWrapper) ModuleExists(fullModuleName string) (*bool, error) {
 }
 
 func (p *cliWrapper) PullModule(fullModuleName string) error {
-	pythonModule, err := parseModuleName(fullModuleName, p.moduleSource)
+	pythonModule, err := parseModuleName(fullModuleName)
 	if err != nil {
 		return err
 	}
@@ -157,7 +126,7 @@ func (p *cliWrapper) PullModule(fullModuleName string) error {
 }
 
 func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadCloser, error) {
-	pythonModule, err := parseModuleName(fullModuleName, p.moduleSource)
+	pythonModule, err := parseModuleName(fullModuleName)
 	if err != nil {
 		return nil, nil, err
 	}

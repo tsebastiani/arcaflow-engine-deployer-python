@@ -1,11 +1,8 @@
 package pythondeployer
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/cliwrapper"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"go.arcalot.io/assert"
@@ -13,15 +10,14 @@ import (
 	"go.flow.arcalot.io/deployer"
 	"go.flow.arcalot.io/pluginsdk/atp"
 	"os"
-	"os/exec"
 	"testing"
 )
 
-func getCliWrapper(t *testing.T, source config.ModuleSource, overrideCompatibilityCheck bool) cliwrapper.CliWrapper {
+func getCliWrapper(t *testing.T, overrideCompatibilityCheck bool) cliwrapper.CliWrapper {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
 	logger := log.NewTestLogger(t)
-	return cliwrapper.NewCliWrapper(pythonPath, workDir, source, logger, overrideCompatibilityCheck)
+	return cliwrapper.NewCliWrapper(pythonPath, workDir, logger, overrideCompatibilityCheck)
 }
 
 func getConnector(t *testing.T, configJSON string) (deployer.Connector, *config.Config) {
@@ -38,45 +34,11 @@ func getConnector(t *testing.T, configJSON string) (deployer.Connector, *config.
 	return connector, unserializedConfig
 }
 
-func createTestVenv(t *testing.T, moduleName string) error {
-	// venv is artificially created, unfortunately until
-	// there is not a module in pypi this is the only way to test
-	// Pypi ModuleSource.
-	// Pull mode Always cannot be tested otherwise the venv
-	// would be overwritten and the module pull from pypi would fail
-	python := getCliWrapper(t, config.ModuleSourcePypi, false)
-	modulePath, err := python.GetModulePath(moduleName)
-	assert.NoError(t, err)
-	exists, err := python.ModuleExists(moduleName)
-	assert.NoError(t, err)
-	if *exists {
-		os.RemoveAll(*modulePath)
-	}
-	err = os.Mkdir(*modulePath, os.ModePerm)
-	assert.NoError(t, err)
-	//TODO: Lookup python3
-	cmdCreateVenv := exec.Command("/usr/bin/python3.9", "-m", "venv", "venv")
-	cmdCreateVenv.Dir = *modulePath
-	var cmdCreateOut bytes.Buffer
-	cmdCreateVenv.Stderr = &cmdCreateOut
-	err = cmdCreateVenv.Run()
-	assert.NoError(t, err)
-	pipPath := fmt.Sprintf("%s/venv/bin/pip", *modulePath)
-	cmdPip := exec.Command(pipPath, "install", "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git@cff677e16693b068dcb0c42817ed7180bc4a5f5a")
-	var cmdPipOut bytes.Buffer
-	cmdPip.Stderr = &cmdPipOut
-	if err := cmdPip.Run(); err != nil {
-		return errors.New(cmdPipOut.String())
-	}
-	return nil
-}
-
 var inOutConfigGitPullAlways = `
 {
 	"pythonPath":"/usr/bin/python3.9",
 	"workdir":"/tmp",
-	"modulePullPolicy":"Always",
-	"moduleSource":"Git"
+	"modulePullPolicy":"Always"
 }
 `
 
@@ -84,30 +46,13 @@ var inOutConfigGitPullIfNotPresent = `
 {
 	"pythonPath":"/usr/bin/python3.9",
 	"workdir":"/tmp",
-	"modulePullPolicy":"IfNotPresent",
-	"moduleSource":"Git"
-}
-`
-
-var inOutConfigPypi = `
-{
-	"pythonPath":"/usr/bin/python3.9",
-	"workdir":"/tmp",
-	"moduleSource":"Pypi"
+	"modulePullPolicy":"IfNotPresent"
 }
 `
 
 func TestRunStepGit(t *testing.T) {
 	moduleName := "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git@faeffde803696d85756d05afd74dd5bd8c9519e5"
 	connector, _ := getConnector(t, inOutConfigGitPullAlways)
-	RunStep(t, connector, moduleName)
-}
-
-func TestRunStepPypi(t *testing.T) {
-	moduleName := "arcaflow-plugin-template-python"
-	err := createTestVenv(t, moduleName)
-	assert.NoError(t, err)
-	connector, _ := getConnector(t, inOutConfigPypi)
 	RunStep(t, connector, moduleName)
 }
 
@@ -119,7 +64,7 @@ func TestPullPolicies(t *testing.T) {
 	RunStep(t, connectorAlways, moduleName)
 	// pull mode IfNotPresent, venv will be kept
 	RunStep(t, connectorIfNotPresent, moduleName)
-	wrapper := getCliWrapper(t, config.ModuleSourceGit, false)
+	wrapper := getCliWrapper(t, false)
 	path, err := wrapper.GetModulePath(moduleName)
 	assert.NoError(t, err)
 	file, err := os.Stat(*path)

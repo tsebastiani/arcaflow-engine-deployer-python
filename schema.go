@@ -56,19 +56,7 @@ var Schema = schema.NewTypedScopeSchema[*config.Config](
 				schema.PointerTo(util.JSONEncode(string(config.ModulePullPolicyIfNotPresent))),
 				nil,
 			),
-			"moduleSource": schema.NewPropertySchema(
-				schema.NewStringEnumSchema(map[string]*schema.DisplayValue{
-					string(config.ModuleSourceGit):  {NameValue: schema.PointerTo("Git")},
-					string(config.ModuleSourcePypi): {NameValue: schema.PointerTo("Pypi")},
-				}),
-				schema.NewDisplayValue(schema.PointerTo("Module Source"), schema.PointerTo("Defines the source of packages"), nil),
-				false,
-				nil,
-				nil,
-				nil,
-				schema.PointerTo(util.JSONEncode(string(config.ModuleSourcePypi))),
-				nil,
-			),
+
 			"overrideModuleCompatibility": schema.NewPropertySchema(
 				schema.NewBoolSchema(),
 				schema.NewDisplayValue(schema.PointerTo("Module Compatibility"), schema.PointerTo("Overrides the module compatibility check"), nil),
