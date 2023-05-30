@@ -21,7 +21,7 @@ type cliWrapper struct {
 	logger                     log.Logger
 }
 
-const NoCompatKeyword string = "python-deployer-norun"
+const RunnableClassifier string = "Arcaflow :: Python Deployer :: Runnable"
 
 func NewCliWrapper(pythonFullPath string,
 	workDir string,
@@ -140,7 +140,7 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 	}
 	venvPython := fmt.Sprintf("%s/venv/bin/python", *venvPath)
 
-	if err := p.checkModuleCompatibility(venvPython, moduleInvokableName); err != nil {
+	if err := p.CheckModuleCompatibility(venvPython, moduleInvokableName); err != nil {
 		return nil, nil, err
 	}
 
@@ -162,18 +162,14 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 	return stdin, stdout, nil
 }
 
-func (p *cliWrapper) checkModuleCompatibility(venvPython string, moduleName string) error {
-
+func (p *cliWrapper) CheckModuleCompatibility(venvPython string, moduleName string) error {
 	args := []string{"-m", "pip", "show", "--verbose", moduleName}
-	var stOutBuff bytes.Buffer
-	var stdErrBuff bytes.Buffer
 	command := exec.Command(venvPython, args...)
-	command.Stdout = &stOutBuff
-	command.Stderr = &stdErrBuff
-	if err := command.Start(); err != nil {
-		return errors.New(stdErrBuff.String())
+	out, err := command.Output()
+	if err != nil {
+		return err
 	}
-	if strings.Contains(stOutBuff.String(), NoCompatKeyword) {
+	if strings.Contains(string(out), RunnableClassifier) == false {
 		if p.overrideCompatibilityCheck {
 			p.logger.Warningf("you're running an incompatible module overriding the engine security checks, " +
 				"this action may lead to unexpected behaviours or engine failure")

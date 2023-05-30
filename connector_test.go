@@ -3,6 +3,7 @@ package pythondeployer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/cliwrapper"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/config"
 	"go.arcalot.io/assert"
@@ -13,6 +14,8 @@ import (
 	"testing"
 )
 
+const templatePluginInput string = "Tester McTesty"
+
 func getCliWrapper(t *testing.T, overrideCompatibilityCheck bool) cliwrapper.CliWrapper {
 	workDir := "/tmp"
 	pythonPath := "/usr/bin/python3.9"
@@ -21,13 +24,13 @@ func getCliWrapper(t *testing.T, overrideCompatibilityCheck bool) cliwrapper.Cli
 }
 
 func getConnector(t *testing.T, configJSON string) (deployer.Connector, *config.Config) {
-	var config any
-	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+	var serializedConfig any
+	if err := json.Unmarshal([]byte(configJSON), &serializedConfig); err != nil {
 		t.Fatal(err)
 	}
 	factory := NewFactory()
 	schema := factory.ConfigurationSchema()
-	unserializedConfig, err := schema.UnserializeType(config)
+	unserializedConfig, err := schema.UnserializeType(serializedConfig)
 	assert.NoError(t, err)
 	connector, err := factory.Create(unserializedConfig, log.NewTestLogger(t))
 	assert.NoError(t, err)
@@ -50,20 +53,64 @@ var inOutConfigGitPullIfNotPresent = `
 }
 `
 
-func TestRunStepGit(t *testing.T) {
-	moduleName := "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git@faeffde803696d85756d05afd74dd5bd8c9519e5"
+var inOutConfigGitOverrideCheks = `
+{
+	"pythonPath":"/usr/bin/python3.9",
+	"workdir":"/tmp",
+	"modulePullPolicy":"IfNotPresent",
+	"overrideModuleCompatibility":"true"
+}
+`
+
+func TestRunIncompatiblePlugin(t *testing.T) {
+	moduleName := "arcaflow-plugin-template-python@git+https://github.com/arcalot/arcaflow-plugin-template-python.git"
 	connector, _ := getConnector(t, inOutConfigGitPullAlways)
-	RunStep(t, connector, moduleName)
+	_, _, err := RunStep(t, connector, moduleName)
+	assert.Error(t, err)
+	assert.Equals(t, err.Error(), "impossible to run module arcaflow_plugin_template_python, marked as incompatible in package metadata")
+}
+
+func TestRunIncompatiblePluginOverride(t *testing.T) {
+	moduleName := "arcaflow-plugin-template-python@git+https://github.com/arcalot/arcaflow-plugin-template-python.git"
+	connector, _ := getConnector(t, inOutConfigGitOverrideCheks)
+	outputID, outputData, err := RunStep(t, connector, moduleName)
+	assert.Equals(t, *outputID, "success")
+	assert.NoError(t, err)
+	assert.Equals(t,
+		outputData.(map[interface{}]interface{}),
+		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
+}
+
+func TestRunStepGit(t *testing.T) {
+	moduleName := "arcaflow-plugin-template-python@git+https://github.com/arcalot/arcaflow-plugin-template-python.git@723f08c155996234a5b0b68a39fe73875bfb879b"
+	connector, _ := getConnector(t, inOutConfigGitPullAlways)
+	outputID, outputData, err := RunStep(t, connector, moduleName)
+	assert.Equals(t, *outputID, "success")
+	assert.NoError(t, err)
+	assert.Equals(t,
+		outputData.(map[interface{}]interface{}),
+		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
 }
 
 func TestPullPolicies(t *testing.T) {
-	moduleName := "arcaflow-plugin-template-python@git+https://github.com/tsebastiani/arcaflow-plugin-template-python.git"
+	moduleName := "arcaflow-plugin-template-python@git+https://github.com/arcalot/arcaflow-plugin-template-python.git@723f08c155996234a5b0b68a39fe73875bfb879b"
 	connectorAlways, _ := getConnector(t, inOutConfigGitPullAlways)
 	connectorIfNotPresent, _ := getConnector(t, inOutConfigGitPullIfNotPresent)
 	// pull mode Always, venv will be removed if present and pulled again
-	RunStep(t, connectorAlways, moduleName)
+	outputID, outputData, err := RunStep(t, connectorAlways, moduleName)
+	assert.Equals(t, *outputID, "success")
+	assert.NoError(t, err)
+	assert.Equals(t,
+		outputData.(map[interface{}]interface{}),
+		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
 	// pull mode IfNotPresent, venv will be kept
-	RunStep(t, connectorIfNotPresent, moduleName)
+	outputID, outputData, err = nil, nil, nil
+	outputID, outputData, err = RunStep(t, connectorIfNotPresent, moduleName)
+	assert.Equals(t, *outputID, "success")
+	assert.NoError(t, err)
+	assert.Equals(t,
+		outputData.(map[interface{}]interface{}),
+		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
 	wrapper := getCliWrapper(t, false)
 	path, err := wrapper.GetModulePath(moduleName)
 	assert.NoError(t, err)
@@ -72,7 +119,13 @@ func TestPullPolicies(t *testing.T) {
 	// venv path modification time is checked
 	startTime := file.ModTime()
 	// pull mode Always, venv will be removed if present and pulled again
-	RunStep(t, connectorAlways, moduleName)
+	outputID, outputData, err = nil, nil, nil
+	outputID, outputData, err = RunStep(t, connectorAlways, moduleName)
+	assert.Equals(t, *outputID, "success")
+	assert.NoError(t, err)
+	assert.Equals(t,
+		outputData.(map[interface{}]interface{}),
+		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
 	file, err = os.Stat(*path)
 	assert.NoError(t, err)
 	// venv path modification time is checked
@@ -81,14 +134,17 @@ func TestPullPolicies(t *testing.T) {
 	assert.Equals(t, newTime.After(startTime), true)
 }
 
-func RunStep(t *testing.T, connector deployer.Connector, moduleName string) {
+func RunStep(t *testing.T, connector deployer.Connector, moduleName string) (*string, any, error) {
 	stepID := "hello-world"
-	input := map[string]any{"name": "Tester McTesty"}
+	input := map[string]any{"name": templatePluginInput}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	plugin, err := connector.Deploy(context.Background(), moduleName)
-	assert.NoError(t, err)
+
+	if err != nil {
+		return nil, nil, err
+	}
 	t.Cleanup(func() {
 		assert.NoError(t, plugin.Close())
 	})
@@ -96,6 +152,7 @@ func RunStep(t *testing.T, connector deployer.Connector, moduleName string) {
 	atpClient := atp.NewClient(plugin)
 	pluginSchema, err := atpClient.ReadSchema()
 	assert.NoError(t, err)
+	assert.NotNil(t, pluginSchema)
 	steps := pluginSchema.Steps()
 	step, ok := steps[stepID]
 	if !ok {
@@ -106,11 +163,7 @@ func RunStep(t *testing.T, connector deployer.Connector, moduleName string) {
 	assert.NoError(t, err)
 
 	// Executes the step and validates that the output is correct.
-	outputID, outputData, _ := atpClient.Execute(ctx, stepID, input)
-	assert.Equals(t, outputID, "success")
-	assert.NoError(t, err)
-	assert.NotNil(t, pluginSchema)
-	assert.Equals(t,
-		outputData.(map[interface{}]interface{}),
-		map[interface{}]interface{}{"message": "Hello, Tester McTesty!"})
+	outputID, outputData, err := atpClient.Execute(ctx, stepID, input)
+	return &outputID, outputData, err
+
 }
