@@ -62,6 +62,18 @@ func (c *Connector) pullModule(_ context.Context, fullModuleName string) error {
 		c.logger.Debugf("module already present skipping pull: %s", fullModuleName)
 		return nil
 	}
+	// check for module compatibility, this is done once if the pull policy is
+	// ModulePullPolicyIfNotPresent or per every run if the policy is ModulePullPolicyAlways
+	c.logger.Debugf("checking module compatibility: %s", fullModuleName)
+	err = c.pythonCliWrapper.CheckModuleCompatibility(fullModuleName)
+	if err != nil && c.config.OverrideModuleCompatibility == false {
+		return err
+	}
+
+	if err != nil && c.config.OverrideModuleCompatibility == true {
+		c.logger.Warningf("you're running an incompatible module overriding compatibility checks," +
+			"this action may lead to engine crashes, be careful")
+	}
 
 	c.logger.Debugf("pulling module: %s", fullModuleName)
 	if err := c.pythonCliWrapper.PullModule(fullModuleName); err != nil {

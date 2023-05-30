@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/tsebastiani/arcaflow-engine-deployer-python/internal/models"
 	"go.arcalot.io/log/v2"
 	"io"
@@ -14,14 +18,14 @@ import (
 )
 
 type cliWrapper struct {
-	pythonFullPath             string
-	workDir                    string
-	overrideCompatibilityCheck bool
-	deployCommand              *exec.Cmd
-	logger                     log.Logger
+	pythonFullPath string
+	workDir        string
+	deployCommand  *exec.Cmd
+	logger         log.Logger
 }
 
 const RunnableClassifier string = "Arcaflow :: Python Deployer :: Runnable"
+const FileFlag string = ".python_deployer_compat"
 
 func NewCliWrapper(pythonFullPath string,
 	workDir string,
@@ -29,10 +33,9 @@ func NewCliWrapper(pythonFullPath string,
 	overrideCompatibilityCheck bool,
 ) CliWrapper {
 	return &cliWrapper{
-		pythonFullPath:             pythonFullPath,
-		logger:                     logger,
-		workDir:                    workDir,
-		overrideCompatibilityCheck: overrideCompatibilityCheck,
+		pythonFullPath: pythonFullPath,
+		logger:         logger,
+		workDir:        workDir,
 	}
 }
 
@@ -140,10 +143,6 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 	}
 	venvPython := fmt.Sprintf("%s/venv/bin/python", *venvPath)
 
-	if err := p.CheckModuleCompatibility(venvPython, moduleInvokableName); err != nil {
-		return nil, nil, err
-	}
-
 	p.deployCommand = exec.Command(venvPython, args...) //nolint:gosec
 	var stdErrBuff bytes.Buffer
 	p.deployCommand.Stderr = &stdErrBuff
@@ -162,19 +161,48 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 	return stdin, stdout, nil
 }
 
-func (p *cliWrapper) CheckModuleCompatibility(venvPython string, moduleName string) error {
-	args := []string{"-m", "pip", "show", "--verbose", moduleName}
-	command := exec.Command(venvPython, args...)
-	out, err := command.Output()
+func (p *cliWrapper) CheckModuleCompatibility(fullModuleName string) error {
+	module, err := parseModuleName(fullModuleName)
+	repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+		URL: *module.Repo,
+	})
 	if err != nil {
 		return err
 	}
-	if strings.Contains(string(out), RunnableClassifier) == false {
-		if p.overrideCompatibilityCheck {
-			p.logger.Warningf("you're running an incompatible module overriding the engine security checks, " +
-				"this action may lead to unexpected behaviours or engine failure")
+	var commit *object.Commit
+	if module.ModuleVersion != nil {
+		commit, err = repo.CommitObject(plumbing.NewHash(*module.ModuleVersion))
+		if err != nil {
+			return err
+		}
+	} else {
+		head, err := repo.Head()
+		if err != nil {
+			return err
+		}
+		commit, err = repo.CommitObject(head.Hash())
+		if err != nil {
+			return err
+		}
+	}
+	tree, err := commit.Tree()
+	if err != nil {
+		return err
+	}
+	var isCompatible bool = false
+
+	tree.Files().ForEach(func(f *object.File) error {
+		if f.Name == FileFlag {
+			isCompatible = true
+		}
+		return nil
+	})
+
+	if isCompatible == false {
+		if module.ModuleVersion != nil {
+			return fmt.Errorf("impossible to run module %s, from repo %s@%s marked as incompatible in package metadata", *module.ModuleName, *module.Repo, *module.ModuleVersion)
 		} else {
-			return fmt.Errorf("impossible to run module %s, marked as incompatible in package metadata", moduleName)
+			return fmt.Errorf("impossible to run module %s, from repo %s marked as incompatible in package metadata", *module.ModuleName, *module.Repo)
 		}
 	}
 	return nil
