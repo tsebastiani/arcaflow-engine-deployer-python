@@ -92,7 +92,6 @@ func TestPullPolicies(t *testing.T) {
 		outputData.(map[interface{}]interface{}),
 		map[interface{}]interface{}{"message": fmt.Sprintf("Hello, %s!", templatePluginInput)})
 	// pull mode IfNotPresent, venv will be kept
-	outputID, outputData, err = nil, nil, nil
 	outputID, outputData, err = RunStep(t, connectorIfNotPresent, moduleName)
 	assert.Equals(t, *outputID, "success")
 	assert.NoError(t, err)
@@ -107,7 +106,6 @@ func TestPullPolicies(t *testing.T) {
 	// venv path modification time is checked
 	startTime := file.ModTime()
 	// pull mode Always, venv will be removed if present and pulled again
-	outputID, outputData, err = nil, nil, nil
 	outputID, outputData, err = RunStep(t, connectorAlways, moduleName)
 	assert.Equals(t, *outputID, "success")
 	assert.NoError(t, err)

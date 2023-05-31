@@ -30,7 +30,6 @@ const FileFlag string = ".python_deployer_compat"
 func NewCliWrapper(pythonFullPath string,
 	workDir string,
 	logger log.Logger,
-	overrideCompatibilityCheck bool,
 ) CliWrapper {
 	return &cliWrapper{
 		pythonFullPath: pythonFullPath,
@@ -166,6 +165,9 @@ func (p *cliWrapper) Deploy(fullModuleName string) (io.WriteCloser, io.ReadClose
 
 func (p *cliWrapper) CheckModuleCompatibility(fullModuleName string) error {
 	module, err := parseModuleName(fullModuleName)
+	if err != nil {
+		return err
+	}
 	repo, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 		URL: *module.Repo,
 	})
@@ -194,14 +196,16 @@ func (p *cliWrapper) CheckModuleCompatibility(fullModuleName string) error {
 	}
 	var isCompatible bool = false
 
-	tree.Files().ForEach(func(f *object.File) error {
+	if err = tree.Files().ForEach(func(f *object.File) error {
 		if f.Name == FileFlag {
 			isCompatible = true
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 
-	if isCompatible == false {
+	if !isCompatible {
 		if module.ModuleVersion != nil {
 			return fmt.Errorf("impossible to run module %s, from repo %s@%s marked as incompatible in package metadata", *module.ModuleName, *module.Repo, *module.ModuleVersion)
 		} else {
